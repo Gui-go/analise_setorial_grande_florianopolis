@@ -1,0 +1,199 @@
+---
+title: "Breve análise setorial da economia de SC"
+author: "Guilherme Viegas"
+date: "15/03/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(knitr)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r dd1, include=FALSE}
+
+flp <- read_csv("Industrias_em_Florianopolis_2003-2017.csv")
+
+flp_ti <- flp %>% 
+  filter(year >= 2010 & year <= 2017) %>% 
+  filter(industry_division == "Serviços de Tecnologia da Informação") %>% 
+  group_by(year) %>% 
+  summarise(
+    salario_mediano_flp = median(average_wage),
+    total_empregos_flp = sum(jobs)
+  )
+
+sj <- read_csv("Industrias_em_Sao_Jose_2003-2017.csv")
+
+sj_ti <- sj %>% 
+  filter(year >= 2010 & year <= 2017) %>% 
+  filter(industry_division == "Serviços de Tecnologia da Informação") %>% 
+  group_by(year) %>% 
+  summarise(
+    salario_mediano_sj = median(average_wage),
+    total_empregos_sj = sum(jobs)
+  )
+
+ph <- read_csv("Industrias_em_Palhoca_2003-2017.csv")
+
+ph_ti <- ph %>% 
+  filter(year >= 2010 & year <= 2017) %>% 
+  filter(industry_division == "Serviços de Tecnologia da Informação") %>% 
+  group_by(year) %>% 
+  summarise(
+    salario_mediano_ph = median(average_wage),
+    total_empregos_ph = sum(jobs)
+  )
+
+sj <- read_csv("Industrias_em_Sao_Jose_2003-2017.csv")
+
+sj_ti <- sj %>% 
+  filter(year >= 2010 & year <= 2017) %>% 
+  filter(industry_division == "Serviços de Tecnologia da Informação") %>% 
+  group_by(year) %>% 
+  summarise(
+    salario_mediano_sj = median(average_wage),
+    total_empregos_sj = sum(jobs)
+  )
+
+bg <- read_csv("Industrias_em_Biguacu_2003-2017.csv")
+
+bg_ti <- bg %>% 
+  filter(year >= 2010 & year <= 2017) %>% 
+  filter(industry_division == "Serviços de Tecnologia da Informação") %>% 
+  group_by(year) %>% 
+  summarise(
+    salario_mediano_bg = median(average_wage),
+    total_empregos_bg = sum(jobs)
+  )
+
+emp <- data.frame(
+  ano = ph_ti[, "year"],
+  total_empregos_flp = flp_ti[, "total_empregos_flp"],
+  total_empregos_sj = sj_ti[, "total_empregos_sj"],
+  total_empregos_ph = ph_ti[, "total_empregos_ph"],
+  total_empregos_bg = bg_ti[, "total_empregos_bg"]
+)
+
+tf <- emp %>% filter(year==2017) %>% select("total_empregos_flp")
+tsj <- emp %>% filter(year==2017) %>% select("total_empregos_sj")
+tph <- emp %>% filter(year==2017) %>% select("total_empregos_ph")
+
+perc_tfsj <- round(tsj/tf, 5)
+perc_tfph <- round(tph/tf, 5)
+
+coef_angular <- lm(emp$total_empregos_flp ~ c(1:8))
+ca <- round(coef(coef_angular)[[2]])
+ss <- summary(coef_angular)
+pv_ca <- round(ss$coefficients[8], 3)
+
+
+```
+
+#### Florianópolis tambem é conhecida como a Capital da Inovação devido ao polo tecnológico que se concentra, especialmente, na própria cidade. Muitos constumam afirmar que toda a metropole comporta este polo, mas, como podemos observar no dados, São José e Palhoça ainda estão consideravelmente atrás da capital. São José, no ano de 2017, representou apenas `r perc_tfsj * 100`% dos postos de emprego em comparação com a capital e palhoça `r perc_tfph * 100`% em comparação com a mesma.
+
+```{r table1, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left'}
+
+knitr::kable(emp, col.names = c("Ano", "Florinópolis", "São José", "Palhoça", "Biguaçu"))
+
+```
+
+#### Apesar disso, podemos notar que a divisão de Serviços de Tecnologia da Informação tem consigo seguidos avanços em Florianópolis, São José e Palhoça. Apenas a cidade de Biguaçu parece não seguido a mesma tendência de suas vizinhas.
+
+```{r graph2, echo=FALSE, fig.width=12, fig.height=8, message=FALSE, warning=FALSE}
+
+empg <- emp %>%
+  rename(
+    "Florianópolis" = total_empregos_flp,
+    "São José" = total_empregos_sj,
+    "Palhoça" = total_empregos_ph,
+    "Biguaçu" = total_empregos_bg
+  ) %>% 
+  tidyr::gather("cidade", "total_de_empregos", 2:5) %>% 
+  arrange(year)
+
+
+ggplot(empg, aes(x = empg$year, y = empg$total_de_empregos, fill=empg$cidade))+
+  geom_bar(stat = "identity", position = "dodge")+
+  labs(
+    title = "Evolução da quantidade de empregos na divisão de Serviços de Tecnologia da Informação entre 2010 e 2017",
+    # subtitle = "",
+    x = "Tempo",
+    y = "Quantidade de empregos formados",
+    fill = "Cidade"
+  )+
+  facet_grid(rows = vars(factor(empg$cidade, levels = c("Biguaçu", "Palhoça", "São José", "Florianópolis"))), scales = "free_y")+
+  theme_minimal()+
+  theme(legend.position="bottom")
+
+
+```
+
+#### Se aplicarmos uma regressão linear na série 'número de empregos em Serviços de Tecnologia da Informação na cidade de Florianópolis', chegaríamos a um coeficiente angular de `r ca`. Ou seja, há potencialmente um aumento de `r ca` empregos ao ano. Vale notar que o p-valor do teste t de significância do coeficiente angular é igual a `r pv_ca`, altamente significativo. Claro, outras hipóteses tambem devem ser confirmadas para validarmos o modelo.
+
+---
+
+##### Em 2014, mais ao norte do estado, a fábrica da BMW já passa a não ser mais uma novidade para os moradores da pequena cidade de Araquarí, que tem pouco mais de 30000 habitantes. Como podemos observar no gráfico a seguir, o nível de exportação da cidade cresceu vertiginosamente após a chegada da fábrica, especialmente para os estados unidos da américa do norte.
+
+#### De acordo com a revista [Exame](https://exame.abril.com.br/negocios/por-dentro-da-fabrica-da-bmw-em-sc/), "A produção na fábrica do BMW Group em Araquari (SC) segue o princípio 'build-to-stock'. Ou seja, a produção de veículos no local é baseada em dados de vendas e de acordo com o volume de demanda." O investimento realizado na fabrica foi de mais de 600 milhões de reais, resultando em possíveis 1300 empregos diretos e 2500 indiretos, quando funcionando em plena capacidade.
+
+```{r exp_araquari, echo=FALSE, fig.width=3, fig.height=2, warning=FALSE, message=FALSE, out.width=c('50%', '50%')}
+knitr::include_graphics("bmw_fac_araq.jpg")
+
+destino_exportacoes_araquari <- read_csv("destino_exportacoes_araquari.csv")
+
+dea <- destino_exportacoes_araquari %>% 
+  filter(year >= 2010) %>% 
+  group_by(year, country) %>% 
+  summarise(
+    valor_exp = sum(value),
+    kg_exp = sum(kg)
+  )
+
+dea_eua <- dea %>% 
+  filter(country == "Estados Unidos")
+
+dea_neua <- dea %>% 
+  filter(country != "Estados Unidos") %>% 
+  group_by(year) %>% 
+  summarise(
+    country = "Outros",
+    valor_exp = sum(valor_exp),
+    kg_exp = sum(kg_exp)
+  )
+
+araq_exp <- bind_rows(dea_neua, dea_eua) %>% 
+  arrange(year)
+
+ggplot(araq_exp, aes(x = araq_exp$year, y = araq_exp$valor_exp, fill=araq_exp$country))+
+  geom_bar(stat="identity")+
+  labs(
+    title = "Exportações de Araquarí, SC, entre 2010 e 2018",
+    # subtitle = "2010 a 2018",
+    x = "Tempo",
+    y = "R$ exportados em u.m.c",
+    fill = "País"
+  )+
+  theme_minimal()+
+  theme(legend.position="bottom",
+        text = element_text(size=5))
+
+```
+
+---
+
+#### Por fim, ao analisarmos a distribuição das conexões dos produtos de Santa Catarina com escopo doméstico, percebemos que há considerável disperção entre eles. O estado Catarinenese há anos vem ganhando destaque na produção de aves, carne bovina e suína, produtos texteis, produtos de cerâmica, motores e maquinários diversos.  
+
+### Espaço de Produtos para Santa Catarina(2017)
+#### Baseado nos Estados Produtores
+#### Exportações: $8,51 Bilhões USD
+
+```{r sc_complex, echo=FALSE, out.width='100%'}
+
+knitr::include_graphics("sc_complex.png")
+
+```
