@@ -1,8 +1,16 @@
 ---
-title: "Breve análise setorial da economia de SC"
+title: "Breve análise setorial das duas principais regiões econômicas de Santa Catarina"
 author: "Guilherme Viegas"
 date: "15/03/2020"
 output: html_document
+---
+
+<style>
+.html-widget {
+    margin: auto;
+}
+</style>
+
 ---
 
 ```{r setup, include=FALSE}
@@ -10,9 +18,112 @@ library(dplyr)
 library(readr)
 library(ggplot2)
 library(knitr)
+library(leaflet)
+library(sp)
+library(sf)
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
+
+#### No presente artigo, o autor buscou fazer uma breve análise setorial das duas principais regiões econômicas do estado Catarinense. Para isso, foram obtidos dados das cidades de Florianópolis, São José, Palhoça, Biguaçu, Joinville, Jaraguá do sul, Araquari e São Francisco do sul, conforme ilustra o mapa. Foram analisadas diversas variáveis socioeconomicas, como tamanho da população, área territorial, Produto Interno Bruto, Índice de Desenvolvimento Humano, entre outras. Para mais informações sobre estas cidades, basta passar o hover por cima da cidade de interesse.
+
+```{r test_map, echo=FALSE, fig.width=9, fig.align='center', warning=FALSE, message=FALSE}
+
+sf_file_sc <- sf::read_sf("data-raw/br_unidades_da_federacao/BRUFE250GC_SIR.shp") %>% sf::st_as_sf(.) %>% filter(NM_ESTADO == "SANTA CATARINA")
+
+popupsc <- paste0(
+  "<h5><b>Santa Catarina</b></br>",
+  "<b>População (2019): <b>7'164'788</br>",
+  "<b>Área territorial: 95'730<b></br>", 
+  "<b>Habitantes por km^2: </b>65.27</br>",
+  "<b>Renda nominal mensal per capta: </b>R$ 1'769</br>",
+  "<b>Quantidade absoluta de veículos: </b>5'152'615</br>",
+  "<b>Quantidade de veículos por habitante: </b>0.72</br>",
+  "<b>IDH: </b> 0.774</br></h5>"
+)
+
+
+scinfo <- data.frame(
+  pop19 = 7164788,
+  habkm2 = 65.27,
+  veiculos = 5152615,
+  renda_n_pcm_reais = 1769,
+  IDH = 0.774,
+  area_territorial_km2 = 95730
+)
+
+# sf_file_meso <- sf::read_sf("data-raw/sc_mesorregioes/42MEE250GC_SIR.shp") %>% sf::st_as_sf(.)
+
+# sf_file_micro <- sf::read_sf("data-raw/sc_microrregioes/42MIE250GC_SIR.shp") %>% sf::st_as_sf(.)
+
+
+sf_file_mn <- sf::read_sf("data-raw/shape_file_ibge/sc_municipios/42MUE250GC_SIR.shp") %>% 
+  sf::st_as_sf(.) %>% filter(NM_MUNICIP %in% c("ARAQUARI", "FLORIANÓPOLIS", "PALHOÇA", "SÃO JOSÉ", "JARAGUÁ DO SUL", "JOINVILLE", "SÃO FRANCISCO DO SUL", "BIGUAÇU" ))
+
+popcity <- data.frame(
+  muni = c("Florianópolis", "São José", "Jaragua do sul", "Palhoça", "São Francisco do sul", "Joinville", "Biguaçu", "Araquari"),
+  CD_GEOCMU = c(4205407, 4216602, 4208906, 4211900, 4216206, 4209102, 4202305, 4201307),
+  area_tkm2 = c(675, 150, 529, 395, 493, 1127, 367, 384),
+  pop19 = c(500973, 246586, 177697, 171797, 52721, 590466, 68481, 38129),
+  IDH = c(0.847, 0.809, 0.803, 0.757, 0.762, 0.809, 0.739, 0.703),
+  pib_pc = c(40162, 42262, 49925, 29298, 78766, 47442, 24176, 111317)
+) %>% mutate(habpkm2 = round(pop19/area_tkm2, 3), CD_GEOCMU = as.character(CD_GEOCMU))
+# popcity
+
+citiessc <- right_join(popcity, sf_file_mn, by = "CD_GEOCMU") %>% sf::st_as_sf(.)
+
+popupcities <- paste0(
+  "<h5><b>", citiessc$NM_MUNICIP, "</b></br>",
+  "<b>População (2019): <b>", citiessc$pop19, "</br>",
+  "<b>Área territorial: ", citiessc$area_tkm2, "<b></br>", 
+  "<b>Habitantes por km^2: </b>", citiessc$habpkm2, "</br>",
+  "<b>PIB per capita: </b>R$ ", citiessc$pib_pc, "</br>",
+  "<b>IDH: </b>", citiessc$IDH, "</br></h5>"
+)
+
+normalize <- function(x){
+  x <- x[!is.na(x)]
+  return((x-min(x))/(max(x)-min(x)))
+}
+pal <- leaflet::colorNumeric(c("red", "green"), 0:1)
+
+leaflet::leaflet() %>% 
+  leaflet::addTiles() %>% 
+  leaflet::addPolygons(
+    data = sf_file_sc, 
+    stroke = T,
+    weight = 0.5,
+    fillColor = "blue",
+    fill = TRUE, 
+    fillOpacity = 0.22,
+    label = lapply(popupsc, htmltools::HTML)
+  ) %>% 
+  leaflet::addPolygons(
+    data = citiessc,
+    stroke = T,
+    weight = 0.6,
+    fillColor = ~ pal(normalize(citiessc$IDH)),
+    fill = TRUE,
+    fillOpacity = 0.5,
+    label = lapply(popupcities, htmltools::HTML)
+  )
+
+```
+\
+
+#### Para melhor analisarmos estas informações, confira a seguinte tabela:
+
+\
+
+```{r maptable, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left'}
+
+knitr::kable(popcity, col.names = c("Município", "Código do município", "Área em km2", "População (2019)", "IDH", "PIB per capita", "Habitantes por km2"))
+
+```
+
+\
+
+---
 
 ```{r dd1, include=FALSE}
 
@@ -94,7 +205,7 @@ pv_ca <- round(ss$coefficients[8], 3)
 
 ```
 
-#### Florianópolis tambem é conhecida como a Capital da Inovação devido ao polo tecnológico que se concentra, especialmente, na própria cidade. Muitos constumam afirmar que toda a metropole comporta este polo, mas, como podemos observar no dados, São José e Palhoça ainda estão consideravelmente atrás da capital. São José, no ano de 2017, representou apenas `r perc_tfsj * 100`% dos postos de emprego em comparação com a capital e palhoça `r perc_tfph * 100`% em comparação com a mesma.
+#### Florianópolis também é conhecida como a Capital da Inovação devido ao polo tecnológico que se concentra, especialmente, na própria cidade. Muitos constumam afirmar que toda a metropole comporta este polo, mas, como podemos observar no dados, São José e Palhoça ainda estão consideravelmente atrás da capital. São José, no ano de 2017, representou apenas `r perc_tfsj * 100`% dos postos de emprego em comparação com a capital e palhoça `r perc_tfph * 100`% em comparação com a mesma.
 
 ```{r table1, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left'}
 
@@ -137,9 +248,9 @@ ggplot(empg, aes(x = empg$year, y = empg$total_de_empregos, fill=empg$cidade))+
 
 ---
 
-##### Em 2014, mais ao norte do estado, a fábrica da BMW já passa a não ser mais uma novidade para os moradores da pequena cidade de Araquarí, que tem pouco mais de 30000 habitantes. Como podemos observar no gráfico a seguir, o nível de exportação da cidade cresceu vertiginosamente após a chegada da fábrica, especialmente para os estados unidos da américa do norte.
+#### Em 2014, mais ao norte do estado, uma enorme fábrica da montadora de veículos BMW se instalou na cidade. Atualmente a fábrica já não é mais uma novidade para os moradores da pequena cidade de Araquarí, que tem pouco mais de 30'000 habitantes, mas com certeza a mesma exerce forte influência nos indicadres socioeconomicos da cidade. Como podemos observar no gráfico a seguir, o nível de exportação da cidade cresceu vertiginosamente após a chegada da fábrica, especialmente para os estados unidos da américa do norte.
 
-#### De acordo com a revista [Exame](https://exame.abril.com.br/negocios/por-dentro-da-fabrica-da-bmw-em-sc/), "A produção na fábrica do BMW Group em Araquari (SC) segue o princípio 'build-to-stock'. Ou seja, a produção de veículos no local é baseada em dados de vendas e de acordo com o volume de demanda." O investimento realizado na fabrica foi de mais de 600 milhões de reais, resultando em possíveis 1300 empregos diretos e 2500 indiretos, quando funcionando em plena capacidade.
+#### De acordo com a revista [Exame](https://exame.abril.com.br/negocios/por-dentro-da-fabrica-da-bmw-em-sc/), "A produção na fábrica do BMW Group em Araquari (SC) segue o princípio 'build-to-stock'. Ou seja, a produção de veículos no local é baseada em dados de vendas e de acordo com o volume de demanda." O investimento realizado na fabrica foi de mais de 600 milhões de reais, resultando em possíveis 1'300 empregos diretos e 2'500 indiretos, quando funcionando em plena capacidade.
 
 ```{r exp_araquari, echo=FALSE, fig.width=3, fig.height=2, warning=FALSE, message=FALSE, out.width=c('50%', '50%')}
 knitr::include_graphics("bmw_fac_araq.jpg")
@@ -188,12 +299,28 @@ ggplot(araq_exp, aes(x = araq_exp$year, y = araq_exp$valor_exp, fill=araq_exp$co
 
 #### Por fim, ao analisarmos a distribuição das conexões dos produtos de Santa Catarina com escopo doméstico, percebemos que há considerável disperção entre eles. O estado Catarinenese há anos vem ganhando destaque na produção de aves, carne bovina e suína, produtos texteis, produtos de cerâmica, motores e maquinários diversos.  
 
-### Espaço de Produtos para Santa Catarina(2017)
+### Espaço de Produtos para Santa Catarina (2017)
 #### Baseado nos Estados Produtores
 #### Exportações: $8,51 Bilhões USD
 
-```{r sc_complex, echo=FALSE, out.width='100%'}
+```{r sc_complex, echo=FALSE, out.width='100%', warning=FALSE}
 
 knitr::include_graphics("sc_complex.png")
 
 ```
+
+\
+
+---
+
+\
+
+### Referências
+
+#### https://cidades.ibge.gov.br/
+
+#### http://dataviva.info/en/
+
+#### https://ancoraoffices.com.br/por-dentro-da-fabrica-da-bmw-sc/
+
+#### https://exame.abril.com.br/negocios/por-dentro-da-fabrica-da-bmw-em-sc/
