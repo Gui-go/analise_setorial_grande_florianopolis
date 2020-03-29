@@ -75,7 +75,7 @@ citiessc <- right_join(popcity, sf_file_mn, by = "CD_GEOCMU") %>% sf::st_as_sf(.
 popupcities <- paste0(
   "<h5><b>", citiessc$NM_MUNICIP, "</b></br>",
   "<b>População (2019): <b>", citiessc$pop19, "</br>",
-  "<b>Área territorial: ", citiessc$area_tkm2, "<b></br>", 
+  "<b>Área territorial: ", citiessc$area_tkm2, " km2<b></br>", 
   "<b>Habitantes por km^2: </b>", citiessc$habpkm2, "</br>",
   "<b>PIB per capita: </b>R$ ", citiessc$pib_pc, "</br>",
   "<b>IDH: </b>", citiessc$IDH, "</br></h5>"
@@ -111,13 +111,14 @@ leaflet::leaflet() %>%
 ```
 \
 
-#### Para melhor analisarmos estas informações, confira a seguinte tabela:
+#### Como é possível observar, as cores dos polígonos das cidades, assim como a tabela a seguir, foram organizados de maneira a rankear as cidades pela pontuação no Índice de Desenvolvimento humano (IDH). Quanto mais verde o polígono maior o IDH da cidade. Vale notar o contraste entre o IDH e PIB per capita da cidade de Araquari, que, apesar de possuir o maior PIB per capita dentre as cidades selecionadas, possui um IDH consideravelmente baixo.
+#### Para melhor analisarmos as informações do mapa, confira a tabela abaixo:
 
 \
 
 ```{r maptable, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left'}
 
-knitr::kable(popcity, col.names = c("Município", "Código do município", "Área em km2", "População (2019)", "IDH", "PIB per capita", "Habitantes por km2"))
+knitr::kable(arrange(popcity, desc(popcity$IDH)), col.names = c("Município", "Código do município", "Área em km2", "População (2019)", "IDH", "PIB per capita", "Habitantes por km2"))
 
 ```
 
@@ -205,15 +206,9 @@ pv_ca <- round(ss$coefficients[8], 3)
 
 ```
 
-#### Florianópolis também é conhecida como a Capital da Inovação devido ao polo tecnológico que se concentra, especialmente, na própria cidade. Muitos constumam afirmar que toda a metropole comporta este polo, mas, como podemos observar no dados, São José e Palhoça ainda estão consideravelmente atrás da capital. São José, no ano de 2017, representou apenas `r perc_tfsj * 100`% dos postos de emprego em comparação com a capital e palhoça `r perc_tfph * 100`% em comparação com a mesma.
+#### Florianópolis também é conhecida como a Capital da Inovação devido ao polo tecnológico que se concentra, especialmente, na própria cidade. Muitos constumam afirmar que toda a metropole comporta este polo, mas, como podemos observar nos dados, São José e Palhoça ainda estão consideravelmente atrás da capital. São José, no ano de 2017, representou apenas `r perc_tfsj * 100`% dos postos de emprego em comparação com a capital e palhoça `r perc_tfph * 100`% em comparação com a mesma.
 
-```{r table1, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left'}
-
-knitr::kable(emp, col.names = c("Ano", "Florinópolis", "São José", "Palhoça", "Biguaçu"))
-
-```
-
-#### Apesar disso, podemos notar que a divisão de Serviços de Tecnologia da Informação tem consigo seguidos avanços em Florianópolis, São José e Palhoça. Apenas a cidade de Biguaçu parece não seguido a mesma tendência de suas vizinhas.
+\
 
 ```{r graph2, echo=FALSE, fig.width=12, fig.height=8, message=FALSE, warning=FALSE}
 
@@ -244,6 +239,18 @@ ggplot(empg, aes(x = empg$year, y = empg$total_de_empregos, fill=empg$cidade))+
 
 ```
 
+
+#### Apesar disso, podemos notar que a divisão de Serviços de Tecnologia da Informação tem consigo seguidos avanços em Florianópolis, São José e Palhoça. Apenas a cidade de Biguaçu parece não seguido a mesma tendência de suas vizinhas.
+
+\
+
+```{r table1, echo=FALSE, message=FALSE, warning=FALSE, fig.align='left'}
+
+knitr::kable(emp, col.names = c("Ano", "Florinópolis", "São José", "Palhoça", "Biguaçu"))
+
+```
+
+
 #### Se aplicarmos uma regressão linear na série 'número de empregos em Serviços de Tecnologia da Informação na cidade de Florianópolis', chegaríamos a um coeficiente angular de `r ca`. Ou seja, há potencialmente um aumento de `r ca` empregos ao ano. Vale notar que o p-valor do teste t de significância do coeficiente angular é igual a `r pv_ca`, altamente significativo. Claro, outras hipóteses tambem devem ser confirmadas para validarmos o modelo.
 
 ---
@@ -251,6 +258,8 @@ ggplot(empg, aes(x = empg$year, y = empg$total_de_empregos, fill=empg$cidade))+
 #### Em 2014, mais ao norte do estado, uma enorme fábrica da montadora de veículos BMW se instalou na cidade. Atualmente a fábrica já não é mais uma novidade para os moradores da pequena cidade de Araquarí, que tem pouco mais de 30'000 habitantes, mas com certeza a mesma exerce forte influência nos indicadres socioeconomicos da cidade. Como podemos observar no gráfico a seguir, o nível de exportação da cidade cresceu vertiginosamente após a chegada da fábrica, especialmente para os estados unidos da américa do norte.
 
 #### De acordo com a revista [Exame](https://exame.abril.com.br/negocios/por-dentro-da-fabrica-da-bmw-em-sc/), "A produção na fábrica do BMW Group em Araquari (SC) segue o princípio 'build-to-stock'. Ou seja, a produção de veículos no local é baseada em dados de vendas e de acordo com o volume de demanda." O investimento realizado na fabrica foi de mais de 600 milhões de reais, resultando em possíveis 1'300 empregos diretos e 2'500 indiretos, quando funcionando em plena capacidade.
+
+\
 
 ```{r exp_araquari, echo=FALSE, fig.width=3, fig.height=2, warning=FALSE, message=FALSE, out.width=c('50%', '50%')}
 knitr::include_graphics("bmw_fac_araq.jpg")
@@ -324,3 +333,5 @@ knitr::include_graphics("sc_complex.png")
 #### https://ancoraoffices.com.br/por-dentro-da-fabrica-da-bmw-sc/
 
 #### https://exame.abril.com.br/negocios/por-dentro-da-fabrica-da-bmw-em-sc/
+
+\ \
